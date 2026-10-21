@@ -1,0 +1,64 @@
+{
+  "name": "doczip",
+  "version": "1.0.0",
+  "description": "DocZip — 保留排版的 Word 图片批量压缩工具",
+  "author": "DocZip",
+  "private": true,
+  "packageManager": "pnpm@11.25.0",
+  "license": "UNLICENSED",
+  "main": "dist/main/main.cjs",
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "build": "tsc --noEmit && node scripts/build.mjs",
+    "start": "electron .",
+    "test": "tsx --test tests/*.test.ts tests/*.test.mts",
+    "test:desktop": "pnpm build && tsx scripts/create-fixtures.ts && node scripts/desktop-test.mjs",
+    "dist": "pnpm build && electron-builder --win nsis --x64"
+  },
+  "dependencies": {
+    "fast-xml-parser": "^5.3.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "sharp": "^0.34.5",
+    "yauzl": "^3.2.0",
+    "yazl": "^3.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@types/yauzl": "^2.10.3",
+    "@types/yazl": "^3.3.0",
+    "electron": "^42.0.0",
+    "electron-builder": "26.15.3",
+    "esbuild": "^0.25.0",
+    "playwright": "^1.56.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.0"
+  },
+  "build": {
+    "appId": "local.doczip.desktop",
+    "productName": "DocZip",
+    "directories": { "output": "release" },
+    "files": ["dist/**/*", "package.json"],
+    "asarUnpack": ["node_modules/sharp/**/*", "node_modules/@img/**/*"],
+    "npmRebuild": false,
+    "win": {
+      "target": ["nsis"],
+      "artifactName": "DocZip-${version}-Setup-${arch}.${ext}",
+      "icon": "assets/icon.ico",
+      "signExecutable": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "shortcutName": "DocZip",
+      "installerIcon": "assets/icon.ico",
+      "uninstallerIcon": "assets/icon.ico",
+      "allowElevation": false,
+      "installerLanguages": ["zh_CN", "en_US"]
+    }
+  }
+}

@@ -1,0 +1,5 @@
+* text=auto eol=lf
+*.cmd text eol=crlf
+*.ico binary
+# Preserve the bundled upstream license verbatim, including its whitespace.
+web/NODE-LICENSE.txt -whitespace

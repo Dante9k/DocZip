@@ -1,0 +1,9 @@
+nodeLinker: hoisted
+storeDir: .cache/pnpm-store
+allowBuilds:
+  electron: true
+  esbuild: true
+  sharp: true
+  electron-winstaller: false
+patchedDependencies:
+  app-builder-lib@26.15.3: patches/app-builder-lib@26.15.3.patch
