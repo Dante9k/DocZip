@@ -16,3 +16,12 @@ test-results/
 .idea/
 Thumbs.db
 .DS_Store
+*.doc
+*.docx
+*.pdf
+*.xlsx
+*.dmp
+*.heapsnapshot
+*.har
+screenshots/
+profiles/

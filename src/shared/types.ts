@@ -17,7 +17,8 @@ export type Result = {
   unchanged: boolean;
   reason: string;
 };
-export type TaskStatus = 'waiting' | 'processing' | 'completed' | 'unchanged' | 'failed' | 'cancelled';
+export type TaskStatus =
+  'waiting' | 'processing' | 'completed' | 'unchanged' | 'failed' | 'cancelled';
 export type Task = {
   id: string;
   inputPath: string;

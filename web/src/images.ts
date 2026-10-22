@@ -5,11 +5,14 @@ const PIXEL_LIMIT = 16_000_000;
 export function concat(arrays: Uint8Array[]) {
   const out = new Uint8Array(arrays.reduce((size, a) => size + a.length, 0));
   let offset = 0;
-  for (const a of arrays) { out.set(a, offset); offset += a.length; }
+  for (const a of arrays) {
+    out.set(a, offset);
+    offset += a.length;
+  }
   return out;
 }
 const crcTable = Uint32Array.from({ length: 256 }, (_, n) => {
-  for (let k = 0; k < 8; k++) n = (n >>> 1) ^ ((n & 1) ? 0xedb88320 : 0);
+  for (let k = 0; k < 8; k++) n = (n >>> 1) ^ (n & 1 ? 0xedb88320 : 0);
   return n >>> 0;
 });
 function crc(data: Uint8Array) {
@@ -18,7 +21,8 @@ function crc(data: Uint8Array) {
   return (value ^ -1) >>> 0;
 }
 function dimensions(width: number, height: number) {
-  if (!width || !height || width * height > PIXEL_LIMIT) throw new Error('超过网页版 1,600 万像素上限');
+  if (!width || !height || width * height > PIXEL_LIMIT)
+    throw new Error('超过网页版 1,600 万像素上限');
 }
 function resize(data: Uint8Array, width: number, height: number, maxSide: number) {
   const ratio = Math.min(1, maxSide / Math.max(width, height));
@@ -27,7 +31,8 @@ function resize(data: Uint8Array, width: number, height: number, maxSide: number
   const context = canvas.getContext('2d');
   if (!context) throw new Error('浏览器不支持图片处理');
   context.putImageData(new ImageData(new Uint8ClampedArray(data), width, height), 0, 0);
-  const w = Math.max(1, Math.round(width * ratio)), h = Math.max(1, Math.round(height * ratio));
+  const w = Math.max(1, Math.round(width * ratio)),
+    h = Math.max(1, Math.round(height * ratio));
   const target = new OffscreenCanvas(w, h);
   const targetContext = target.getContext('2d')!;
   targetContext.imageSmoothingEnabled = true;
@@ -60,22 +65,28 @@ function jpegSegments(data: Uint8Array) {
 const isMetadata = (marker: number) => (marker >= 0xe0 && marker <= 0xef) || marker === 0xfe;
 function compressJpeg(input: Uint8Array, quality: number, maxSide: number) {
   const original = jpegSegments(input);
-  const frame = original.segments.find(s => [0xc0, 0xc1, 0xc2].includes(s.marker));
+  const frame = original.segments.find((s) => [0xc0, 0xc1, 0xc2].includes(s.marker));
   if (!frame) throw new Error('JPEG 编码方式暂不支持');
   const f = frame.data;
   dimensions((f[7] << 8) | f[8], (f[5] << 8) | f[6]);
   if (f[4] !== 8 || f[9] !== 3) throw new Error('灰度、CMYK 或高位深 JPEG 保留原样');
-  const adobe = original.segments.find(s => s.marker === 0xee);
+  const adobe = original.segments.find((s) => s.marker === 0xee);
   if (adobe && adobe.data[15] !== 1) throw new Error('特殊色彩空间保留原样');
   // Decode raw samples without browser EXIF autorotation or ICC conversion.
-  const raw = jpeg.decode(input, { useTArray: true, formatAsRGBA: true, tolerantDecoding: false, maxResolutionInMP: 16, maxMemoryUsageInMB: 300 });
+  const raw = jpeg.decode(input, {
+    useTArray: true,
+    formatAsRGBA: true,
+    tolerantDecoding: false,
+    maxResolutionInMP: 16,
+    maxMemoryUsageInMB: 300,
+  });
   const resized = resize(raw.data, raw.width, raw.height, maxSide);
   const encoded = jpeg.encode(resized, quality).data;
   const generated = jpegSegments(encoded);
   return concat([
     new Uint8Array([255, 216]),
-    ...original.segments.filter(s => isMetadata(s.marker)).map(s => s.data),
-    ...generated.segments.filter(s => !isMetadata(s.marker)).map(s => s.data),
+    ...original.segments.filter((s) => isMetadata(s.marker)).map((s) => s.data),
+    ...generated.segments.filter((s) => !isMetadata(s.marker)).map((s) => s.data),
     generated.tail,
   ]);
 }
@@ -90,8 +101,12 @@ function pngChunks(bytes: Uint8Array): Chunk[] {
     const length = view.getUint32(i);
     const end = i + length + 12;
     if (end > bytes.length) throw new Error('PNG 部件长度无效');
-    if (crc(bytes.subarray(i + 4, end - 4)) !== view.getUint32(end - 4)) throw new Error('PNG 校验失败');
-    chunks.push({ name: String.fromCharCode(...bytes.subarray(i + 4, i + 8)), data: bytes.subarray(i, end) });
+    if (crc(bytes.subarray(i + 4, end - 4)) !== view.getUint32(end - 4))
+      throw new Error('PNG 校验失败');
+    chunks.push({
+      name: String.fromCharCode(...bytes.subarray(i + 4, i + 8)),
+      data: bytes.subarray(i, end),
+    });
     i = end;
   }
   if (chunks[0]?.name !== 'IHDR' || chunks.at(-1)?.name !== 'IEND') throw new Error('PNG 结构无效');
@@ -101,21 +116,41 @@ function compressPng(input: Uint8Array, maxSide: number) {
   const chunks = pngChunks(input);
   const ihdr = new DataView(chunks[0].data.buffer, chunks[0].data.byteOffset);
   dimensions(ihdr.getUint32(8), ihdr.getUint32(12));
-  if (chunks.some(c => c.name === 'acTL')) throw new Error('动画 PNG 保留原样');
+  if (chunks.some((c) => c.name === 'acTL')) throw new Error('动画 PNG 保留原样');
   if (chunks[0].data[16] !== 8) throw new Error('非 8 位 PNG 保留原样');
   if (![2, 3, 6].includes(chunks[0].data[17])) throw new Error('灰度 PNG 保留原样');
   const original = UPNG.decode(input.slice().buffer);
   const raw = new Uint8Array(UPNG.toRGBA8(original)[0]);
   const resized = resize(raw, original.width, original.height, maxSide);
   // Palette quantisation is disabled; keep RGBA samples lossless at the selected dimensions.
-  const encoded = new Uint8Array(UPNG.encode([resized.data.slice().buffer], resized.width, resized.height, 0, undefined, true));
+  const encoded = new Uint8Array(
+    UPNG.encode([resized.data.slice().buffer], resized.width, resized.height, 0, undefined, true),
+  );
   const generated = pngChunks(encoded);
-  const preserve = new Set(['cHRM', 'gAMA', 'iCCP', 'sRGB', 'pHYs', 'eXIf', 'tEXt', 'zTXt', 'iTXt']);
-  return concat([encoded.subarray(0, 8), generated[0].data,
-    ...chunks.filter(c => preserve.has(c.name)).map(c => c.data),
-    ...generated.slice(1).filter(c => !preserve.has(c.name)).map(c => c.data)]);
+  const preserve = new Set([
+    'cHRM',
+    'gAMA',
+    'iCCP',
+    'sRGB',
+    'pHYs',
+    'eXIf',
+    'tEXt',
+    'zTXt',
+    'iTXt',
+  ]);
+  return concat([
+    encoded.subarray(0, 8),
+    generated[0].data,
+    ...chunks.filter((c) => preserve.has(c.name)).map((c) => c.data),
+    ...generated
+      .slice(1)
+      .filter((c) => !preserve.has(c.name))
+      .map((c) => c.data),
+  ]);
 }
 export function compressImage(input: Uint8Array, type: string, quality: number, maxSide: number) {
   if (input.length > 48 * 1024 * 1024) throw new Error('超过网页版单张图片 48 MB 上限');
-  return type === 'image/jpeg' ? compressJpeg(input, quality, maxSide) : compressPng(input, maxSide);
+  return type === 'image/jpeg'
+    ? compressJpeg(input, quality, maxSide)
+    : compressPng(input, maxSide);
 }

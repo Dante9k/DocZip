@@ -1,0 +1,12 @@
+node_modules/
+dist/
+release/
+.cache/
+.pnpm-store/
+test-results/
+web/node_modules/
+web/dist/
+pnpm-lock.yaml
+web/pnpm-lock.yaml
+patches/
+web/NODE-LICENSE.txt
